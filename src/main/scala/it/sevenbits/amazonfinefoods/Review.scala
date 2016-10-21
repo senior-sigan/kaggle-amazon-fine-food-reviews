@@ -5,10 +5,10 @@ case class Review(
                    ProductId: String,
                    UserId: String,
                    ProfileName: String,
-                   HelpfulnessNumerator: String,
-                   HelpfulnessDenominator: String,
-                   Score: String,
-                   Time: String,
+                   HelpfulnessNumerator: Int,
+                   HelpfulnessDenominator: Int,
+                   Score: Int,
+                   Time: Long,
                    Summary: String,
                    Text: String
                  )

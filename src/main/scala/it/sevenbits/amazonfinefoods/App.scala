@@ -14,15 +14,15 @@ object App {
       StructField("ProductId", StringType),
       StructField("UserId", StringType),
       StructField("ProfileName", StringType),
-      StructField("HelpfulnessNumerator", StringType),
-      StructField("HelpfulnessDenominator", StringType),
-      StructField("Score", StringType),
-      StructField("Time", StringType),
+      StructField("HelpfulnessNumerator", IntegerType),
+      StructField("HelpfulnessDenominator", IntegerType),
+      StructField("Score", IntegerType),
+      StructField("Time", LongType),
       StructField("Summary", StringType),
       StructField("Text", StringType)
     ))
 
-    val df = spark.read.format("csv").option("header", "true").schema(schema).csv(args(0)).as[Review]
+    val df = spark.read.format("csv").option("header", "true").option("escape", "\"").schema(schema).csv(args(0)).as[Review]
 
     df.show(10)
     findMostActiveUser(df, spark)
