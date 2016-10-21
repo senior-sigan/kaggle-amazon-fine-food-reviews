@@ -12,3 +12,9 @@ case class Review(
                    Summary: String,
                    Text: String
                  )
+
+case class CommentChunk(
+                         Id: Int,
+                         Text: String,
+                         delim: String = ","
+                       )
