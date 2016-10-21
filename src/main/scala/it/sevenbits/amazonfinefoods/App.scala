@@ -1,39 +1,36 @@
 package it.sevenbits.amazonfinefoods
 
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{Dataset, SparkSession}
 
 object App {
 
   def main(args: Array[String]): Unit = {
     val spark = SparkSession.builder().appName("amazon-fine-foods").getOrCreate()
+    import spark.implicits._
 
     val schema = StructType(Seq(
       StructField("Id", IntegerType),
       StructField("ProductId", StringType),
       StructField("UserId", StringType),
       StructField("ProfileName", StringType),
-      StructField("HelpfulnessNumerator", IntegerType),
-      StructField("HelpfulnessDenominator", IntegerType),
-      StructField("Score", IntegerType),
-      StructField("Time", LongType),
+      StructField("HelpfulnessNumerator", StringType),
+      StructField("HelpfulnessDenominator", StringType),
+      StructField("Score", StringType),
+      StructField("Time", StringType),
       StructField("Summary", StringType),
       StructField("Text", StringType)
     ))
 
-    val df = spark.read
-      .format("csv")
-      .option("header", "true")
-      .schema(schema)
-      .csv("/home/ilya/Documents/amazon-fine-foods/data/Reviews.csv")
+    val df = spark.read.format("csv").option("header", "true").schema(schema).csv(args(0)).as[Review]
 
     df.show(10)
-    //    findMostActiveUser(df, spark)
-    //    findMostCommentedFood(df, spark)
-    findMostPopularWord(df, spark)
+    findMostActiveUser(df, spark)
+    findMostCommentedFood(df, spark)
+    countWords(filterWords(df, spark), spark)
   }
 
-  def findMostActiveUser(df: DataFrame, spark: SparkSession): Unit = {
+  def findMostActiveUser(df: Dataset[Review], spark: SparkSession): Unit = {
     import spark.implicits._
 
     df.groupBy("UserId")
@@ -42,7 +39,7 @@ object App {
       .show(10)
   }
 
-  def findMostCommentedFood(df: DataFrame, spark: SparkSession): Unit = {
+  def findMostCommentedFood(df: Dataset[Review], spark: SparkSession): Unit = {
     import spark.implicits._
 
     df.groupBy("ProductId")
@@ -51,15 +48,20 @@ object App {
       .show(10)
   }
 
-  def findMostPopularWord(df: DataFrame, spark: SparkSession): Unit = {
+  def countWords(ds: Dataset[String], spark: SparkSession): Unit = {
     import spark.implicits._
 
-    df.flatMap { row =>
-      row.getAs[String]("Text").split(" ")
-    }.map { text =>
-      text.toLowerCase().trim.replace(".", "").replace(",", "").replace("\"", "")
-    }.filter { text =>
-      text.nonEmpty
-    }.show(100)
+    ds.groupByKey(_.toLowerCase)
+      .count()
+      .orderBy($"count(1)".desc)
+      .show(10)
+  }
+
+  def filterWords(ds: Dataset[Review], spark: SparkSession): Dataset[String] = {
+    import spark.implicits._
+
+    ds.flatMap(_.Text.split("\\s+"))
+      .map(_.trim.replaceAll("[^\\p{Alpha}\\p{Digit}]+", ""))
+      .filter(_.nonEmpty)
   }
 }
