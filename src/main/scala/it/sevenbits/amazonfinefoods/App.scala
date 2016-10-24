@@ -1,13 +1,14 @@
 package it.sevenbits.amazonfinefoods
 
+import com.rabbitmq.client.{Channel, ConnectionFactory, DefaultConsumer}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
-import org.apache.spark.sql.functions._
 
 object App {
 
   /**
     * First arguments must be absolute path to the csv file.
+    *
     * @param args
     */
   def main(args: Array[String]): Unit = {
@@ -36,12 +37,11 @@ object App {
       .as[Review]
 
     ds.show(10)
-    
-    findMostActiveUser(ds, spark).show(10)
-    findMostCommentedFood(ds, spark).show(10)
-    findMostPopularWords(ds, spark).show(10)
 
-//    sentences(ds, spark)
+    //    findMostActiveUser(ds, spark).show(10)
+    //    findMostCommentedFood(ds, spark).show(10)
+    //    findMostPopularWords(ds, spark).show(10)
+    sentences(ds, 800, spark)
   }
 
   def findMostActiveUser(ds: Dataset[Review], spark: SparkSession): Dataset[Row] = {
@@ -101,12 +101,19 @@ object App {
     * We can use Kafka, RabbitMq, etc. to store this tasks.
     * Task may throw exception and we must put it in the end of the queue to execute again later.
     *
+    * Heuristic params.
+    * If n == 800 We get 285000 texts to translate with average text length of 900 symbols.
+    * So we utilize translate api by maximum.
+    *
     * @param ds
-    * @param n translate API limitation
+    * @param n     translate API limitation
     * @param spark used for importing implicits
     */
   def sentences(ds: Dataset[Review], n: Int = 1000, spark: SparkSession): Unit = {
     import spark.implicits._
+
+    val accum = new StringAccumulator()
+    spark.sparkContext.register(accum, "StringAccumulator")
 
     ds.flatMap { row =>
       if (row.Text.length > n) {
@@ -116,6 +123,24 @@ object App {
       }
     }.map(ch => ch.copy(Text = ch.Text.trim))
       .filter(_.Text.nonEmpty)
-      .show(10)
+      .foreachPartition { partition =>
+        val queueName = "translate_queue"
+        val factory = new ConnectionFactory()
+        factory.setHost("172.17.0.2")
+        val connection = factory.newConnection()
+        val channel = connection.createChannel()
+        channel.queueDeclare(queueName, false, false, false, null)
+
+        partition.foreach { chunk =>
+          accum.add(s"${chunk.Id}|||${chunk.Text}\n") // actually we could use a pool of accumulators to achieve the best coverage - the biggest avg and smallest total count of requests to the translate api.
+          if (accum.value.length >= n) {
+            channel.basicPublish("", queueName, null, accum.value.getBytes())
+            accum.reset()
+          }
+        }
+
+        channel.close()
+        connection.close()
+      }
   }
 }
