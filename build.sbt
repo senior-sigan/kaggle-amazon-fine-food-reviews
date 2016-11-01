@@ -24,8 +24,9 @@ lazy val translator = project.in(file("./translator"))
 
 lazy val api = project.in(file("./api"))
   .settings(commonSettings: _*)
+  .settings(resolvers ++= Seq("Twitter Maven" at "https://maven.twttr.com"))
   .settings(libraryDependencies ++= Seq(
-    "com.typesafe.akka" %% "akka-actor" % "2.4.11",
-    "io.spray" %% "spray-can" % "1.3.3",
-    "io.spray" %% "spray-routing" % "1.3.3"
+    "com.twitter" %% "finatra-http" % "2.5.0",
+    "com.twitter" %% "finatra-slf4j" % "2.5.0",
+    "ch.qos.logback" % "logback-classic" % "1.1.3"
   ))
