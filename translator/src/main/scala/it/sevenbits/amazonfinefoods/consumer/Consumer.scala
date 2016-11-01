@@ -15,15 +15,17 @@ object Consumer extends App {
 
   startAkka(connection, channel)
 
-  channel.close()
-  connection.close()
+//  Actually we don't want to close connections, because it's a daemon.
+//  channel.close()
+//  connection.close()
 
   def fetch(channel: Channel): Option[String] = {
     val response = channel.basicGet(queueName, false)
 
     if (response != null) {
+      val body = new String(response.getBody)
       channel.basicAck(response.getEnvelope.getDeliveryTag, false)
-      Some(new String(response.getBody))
+      Some(body)
     } else {
       None
     }
@@ -32,6 +34,8 @@ object Consumer extends App {
   def startAkka(connection: Connection, channel: Channel): Unit = {
     import system.dispatcher
     val translatorActor = system.actorOf(Props(classOf[TranslateActor]))
-    system.scheduler.schedule(0.seconds, 1.seconds, translatorActor, fetch(channel).get)
+    system.scheduler.schedule(0.seconds, 1.seconds) {
+      translatorActor ! fetch(channel).get
+    }
   }
 }

@@ -19,7 +19,8 @@ lazy val translator = project.in(file("./translator"))
   .settings(libraryDependencies ++= Seq(
     "com.rabbitmq" % "amqp-client" % "3.6.5",
     "com.typesafe.akka" %% "akka-actor" % "2.4.11",
-    "com.typesafe.akka" %% "akka-http-core" % "2.4.11"
+    "com.typesafe.akka" %% "akka-http-core" % "2.4.11",
+    "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.7.2"
   ))
 
 lazy val api = project.in(file("./api"))
