@@ -38,30 +38,42 @@ object App {
 
     ds.show(10)
 
-    //    findMostActiveUser(ds, spark).show(10)
-    //    findMostCommentedFood(ds, spark).show(10)
-    //    findMostPopularWords(ds, spark).show(10)
-    sentences(ds, 800, spark)
+    if (args(1) == "translate=true") {
+      sentences(ds, 800, spark)
+    } else {
+      findMostActiveUser(ds, spark).show(100)
+      findMostCommentedFood(ds, spark).show(100)
+      findMostPopularWords(ds, spark).show(100)
+    }
   }
 
-  def findMostActiveUser(ds: Dataset[Review], spark: SparkSession): Dataset[Row] = {
+  def findMostActiveUser(ds: Dataset[Review], spark: SparkSession, limit: Int = 1000): Dataset[Row] = {
     import spark.implicits._
 
-    ds.groupBy("UserId")
+    ds.groupBy("UserId", "ProfileName")
       .count()
       .orderBy($"count".desc)
+      .limit(limit)
+      .orderBy($"ProfileName")
   }
 
-  def findMostCommentedFood(ds: Dataset[Review], spark: SparkSession): Dataset[Row] = {
+  def findMostCommentedFood(ds: Dataset[Review], spark: SparkSession, limit: Int = 1000): Dataset[Row] = {
     import spark.implicits._
 
     ds.groupBy("ProductId")
       .count()
       .orderBy($"count".desc)
+      .limit(limit)
+      .orderBy($"ProductId")
   }
 
-  def findMostPopularWords(ds: Dataset[Review], spark: SparkSession): Dataset[Row] = {
-    countWords(filterWords(ds, spark), spark).toDF()
+  def findMostPopularWords(ds: Dataset[Review], spark: SparkSession, limit: Int = 1000): Dataset[Row] = {
+    import spark.implicits._
+
+    countWords(filterWords(ds, spark), spark)
+      .toDF()
+      .limit(limit)
+      .orderBy($"value")
   }
 
   def countWords(ds: Dataset[String], spark: SparkSession): Dataset[(String, Long)] = {
@@ -77,7 +89,7 @@ object App {
 
     // in addition we can filter out pronouns, prepositions etc...
     ds.flatMap(_.Text.split("\\s+"))
-      .map(_.trim.replaceAll("[^\\p{Alpha}\\p{Digit}]+", ""))
+      .map(_.trim.replaceAll("[^\\p{Alpha}]+", ""))
       .filter(_.nonEmpty)
   }
 
